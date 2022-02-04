@@ -166,7 +166,6 @@ public class A1main {
 				frontier.remove(0);
         break;
 			case "DFS": //run DFS
-        System.out.println("why am i in dfs");
 				temp = frontier.get(frontier.size()-1);
 				frontier.remove(frontier.size()-1);
 				break;
