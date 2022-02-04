@@ -5,8 +5,7 @@
  *
  * @author at258
  *
- * run with
- * java A1main <Algo> <ConfID>
+ * run with java A1main <Algo> <ConfID>
  *
  */
 
@@ -18,7 +17,7 @@ public class A1main {
 
   static final boolean DEBUG = true; // Change to true to read debug information
 
-  // manhattan distance works on a triangle grid insted of a square
+  // set manhattan distance to work on a triangle grid insted of a square
   static final boolean MAN_DIST_TRI = false;
 
 	/**
@@ -48,28 +47,17 @@ public class A1main {
 
 	}
 
+  /**
+   * Main search tree algorithim. Changes for different algorthims happen during
+   * smaller functions.
+   * @param algo   algorithm selected as a string
+   * @param map    map to navigate
+   * @param start  start coords
+   * @param goal   end coords
+   */
 	private static void runSearch(String algo, Map map, Coord start, Coord goal) {
 
-		switch(algo) {
-			case "BFS": //run BFS
-				runBasic(algo, map, start, goal);
-				break;
-			case "DFS": //run DFS
-        runBasic(algo, map, start, goal);
-				break;
-			case "BestF": //run BestF
-				runBasic(algo, map, start, goal);
-        break;
-			// case "AStar": //run AStar
-			// 	throw new java.lang.UnsupportedOperationException("Not supported yet.");
-			// 	break;
-		}
-
-	}
-
-	private static void runBasic(String algo, Map map, Coord start, Coord goal) {
-
-    int visitedNodes = 0;
+    int visitedNodes = 0; // Number of visited nodes during the search
 
 		// Create frontier and add starting node
 		LinkedList<Node> frontier = new LinkedList<Node>();
@@ -90,7 +78,7 @@ public class A1main {
 			explored.add(tempNode.getState().toString()); // Add coord to explored
       // System.out.println("explored = " + explored);
 
-			if (goalTest(tempNode, goal)) { // Check tempNode is goal
+			if (goalTest(tempNode, goal)) { // Check if tempNode is the goal coords
 
         finished(tempNode, visitedNodes);
 
@@ -99,58 +87,70 @@ public class A1main {
  				// Loop through available neighbour coords
 				for (Coord coord : successorFunction(map, tempNode.getState())) {
 
-          // If not already explored and not in frontier...
-					if (!explored.contains(coord.toString()) && !inFrontier(coord, frontier)) {
-						insert(coord, tempNode, algo, frontier, goal);
+          // if A* it doesnt matter if the coords are already in frontier
+          if (algo == "AStar") {
+            if (!explored.contains(coord.toString())) {       // If the coord is not explored
+              insert(coord, tempNode, algo, frontier, goal);  // Insert new node in frontier
+            }
+
+          // Else if coord not already explored and not in frontier...
+          } else if (!explored.contains(coord.toString()) && !inFrontier(coord, frontier)) {
+						insert(coord, tempNode, algo, frontier, goal); // Insert new node in frontier
 					}
         }
 			}
 		}
 
-		// frontier empty - return failure
+		// Frontier is empty at this stage so return failure
 		failure(visitedNodes);
 
 	}
 
 	/**
 	 * Returns the first node from the frontier.
-	 * @param index     [description]
-	 * @param frontier  [description]
+	 * BFS - returns the first node in frontier (Queue)
+	 * DFS - returns the last node in frontier (Stack)
+	 * BestF & A* - returns the lowest cost node (Priority queue)
+	 * @param algo     algorithm to use
+	 * @param frontier  frontier of nodes
 	 */
 	private static Node remove(String algo, LinkedList<Node> frontier) {
 
 		Node temp = null;
 
-    // System.out.println(frontier.size());
-
 		switch(algo) {
-			case "BFS": //run BFS
+
+      // Frontier is treated as a queue - remove and return first element
+			case "BFS":
 				temp = frontier.get(0);
-        // System.out.println(frontier);
-        // System.out.println(frontier.size());
 				frontier.remove(0);
         break;
+
+      // Frontier is treated as a stack - remove and return last element
 			case "DFS": //run DFS
 				temp = frontier.get(frontier.size()-1);
 				frontier.remove(frontier.size()-1);
 				break;
+
+      // Frontier is treated as a priority queue - find node with the smallest
+      // cost and remove and return it.
       case "BestF":
+      case "AStar":
 
-        int indexOfSmallestPath = 0;
+        int indexOfSmallestPath = 0; // Index of the node with smallest cost
+
+        // Loop through frontier, if we find a node with smaller cost than
+        // frontier(indexOfSmallestPath), set indexOfSmallestPath to that node
         for (Node node : frontier) {
-
-          // System.out.println("\tis " + frontier.get(indexOfSmallestPath).getPriority() + "<" + node.getPriority());
           if (frontier.get(indexOfSmallestPath).getPriority() >= node.getPriority()) {
             indexOfSmallestPath = frontier.indexOf(node);
           }
         }
+
+        // Remove node from frontier and return it.
         temp = frontier.get(indexOfSmallestPath);
-        // System.out.println("chosen " + temp.getState().toString() + ":" + temp.getPriority());
-				frontier.remove(indexOfSmallestPath);
+        frontier.remove(indexOfSmallestPath);
 
-        break;
-
-      case "AStar":
         break;
 		}
 		return temp;
@@ -158,31 +158,86 @@ public class A1main {
 	}
 
   /**
-	 * Inserts a new node into the frontier.
-	 * @param node      [description]
-	 * @param frontier  [description]
-	 */
+   * Inserts a new node into the frontier.
+   * @param coord       current coord
+   * @param parentNode  parent node of new node
+   * @param algo        algorithim in use
+   * @param frontier    frontier of nodes
+   * @param goal        goal coord
+   */
 	private static void insert(Coord coord, Node parentNode, String algo, LinkedList<Node> frontier, Coord goal) {
 
     switch(algo) {
+
+      // Create new node with no priority and add to frontier
 			case "BFS":
-				frontier.add(new Node(coord, parentNode)); // Add to frontier.
-        break;
 			case "DFS":
-				frontier.add(new Node(coord, parentNode)); // Add to frontier.
+				frontier.add(new Node(coord, parentNode));
 				break;
+
+      // Create new node with priority equal to Manhattan distance and add to frontier
       case "BestF":
         frontier.add(new Node(coord, parentNode, calculateManhattanDist(coord, goal)));
         break;
-      case "AStar":
-        break;
-		}
 
+      // Create new node with priority equal to Manhattan distance + path cost of
+      // new node and add to frontier
+      case "AStar":
+
+        // A* is different as we have not done a check in the search to see if
+        // the coord is already in the frontier. This is because if it does exist
+        // we compare the two path costs and only keep the node with the smallest
+        // path cost in the frontier.
+
+        // Calculate the path cost of the new node. If this node is the starting
+        // node, parentNode will be null so we set path cost to 0.
+        double pathCostOfNewNode;
+        if (parentNode != null) {
+          pathCostOfNewNode = parentNode.getPathCost() + 1;
+        } else {
+          pathCostOfNewNode = 0;
+        }
+
+        // Create new node
+        Node temp = new Node(coord, parentNode, calculateManhattanDist(coord, goal) + pathCostOfNewNode);
+
+        if (inFrontier(coord, frontier)) { // If the coord is already in the frontier
+
+          // Find the node with the same coord
+          for (Node node : frontier) {
+            if (node.getState().equals(temp.getState())) {
+
+              // If the new node has a smaller path cost replace old node in the
+              // frontier.
+              if (temp.getPathCost() < node.getPathCost()) {
+                frontier.remove(node);
+                frontier.add(temp);
+              }
+            }
+          }
+
+        // If the coord is not in the frontier just add it normally
+        } else {
+          frontier.add(temp);
+        }
+
+        break;
+
+		}
 	}
 
+  /**
+   * Calculate the manhattan distance betweek two points.
+   * @param  start               starting coords
+   * @param  goal                finishing coords
+   * @return       manhattan distance
+   */
   private static int calculateManhattanDist(Coord start, Coord goal) {
 
+    // Calculate manDistance as a grid of triangles
     if (MAN_DIST_TRI == true) {
+
+      // Get 3 coord representation of both coords
       int startCoords[] = squareToTriangleCoords(start);
       int goalCoords[] = squareToTriangleCoords(goal);
 
@@ -192,6 +247,7 @@ public class A1main {
 
       return changeInA + changeInB + changeInC;
 
+    // Calculate manDistance as a grid of squares
     } else {
 
       return Math.abs(start.getR() - goal.getR()) + Math.abs(start.getC() - goal.getC());
@@ -200,6 +256,11 @@ public class A1main {
 
   }
 
+  /**
+   * Convert a x,y coord representation to a,b,c
+   * @param  start               coord to convert
+   * @return       a 3-size array of coords a,b and c
+   */
   private static int[] squareToTriangleCoords(Coord start) {
 
     int dir;
@@ -218,49 +279,52 @@ public class A1main {
 
   }
 
+  /**
+   * Print the frontier.
+   * @param frontier  Frontier
+   * @param algo      Algorithm in use
+   */
 	private static void printFrontier(LinkedList<Node> frontier, String algo) {
 
 		System.out.print("[");
 		for (int i = 0; i < frontier.size() - 1; i++) {
 
       switch(algo) {
+
+        // For BFS & DFS, no need to print costs/priorities with coords
   			case "BFS": //run BFS
-  				System.out.print(frontier.get(i).getState().toString() + ",");
-  				break;
   			case "DFS": //run DFS
           System.out.print(frontier.get(i).getState().toString() + ",");
   				break;
-			case "BestF": //run BestF
+
+        // For BestF & A* print costs/priorities alongside coords
+  			case "BestF": //run BestF
+        case "AStar":
   				System.out.print(frontier.get(i).getState().toString() + ":" + frontier.get(i).getPriority() + ",");
 				break;
-			// case "AStar": //run AStar
-			// 	throw new java.lang.UnsupportedOperationException("Not done print yet.");
-			// 	break;
   		}
 
 		}
 
+    // Previous loop only printed up to the second last element, so repeat but this
+    // time dont print a comma and instead close the square brackets.
     switch(algo) {
-      case "BFS": //run BFS
+      case "BFS":
+      case "DFS":
         System.out.print(frontier.get(frontier.size() - 1).getState().toString() + "]\n");
         break;
-      case "DFS": //run DFS
-        System.out.print(frontier.get(frontier.size() - 1).getState().toString() + "]\n");
-        break;
-    case "BestF": //run BestF
+    case "BestF":
+    case "AStar":
         System.out.print(frontier.get(frontier.size() - 1).getState().toString() + ":" + frontier.get(frontier.size() - 1).getPriority() + "]\n");
       break;
-    // case "AStar": //run AStar
-    // 	throw new java.lang.UnsupportedOperationException("Not done print yet.");
-    // 	break;
     }
 
 	}
 
 	/**
 	 * Returns true if state is a goal state
-	 * @param state  [description]
-	 * @param goal   [description]
+	 * @param node  node currently being tested
+	 * @param goal   goal coords
 	 */
 	private static boolean goalTest(Node node, Coord goal) {
 		if (node.getState().equals(goal)) {
@@ -271,10 +335,10 @@ public class A1main {
 	}
 
 	/**
-	 * Implements the successor function, i.e. expands a set of new nodes given
-	 * all actions applicable in the state.
-	 * @param node     [description]
-	 * @param problem  [description]
+	 * Return a list of all possible coordinates available to move to from given
+	 * coord. Coords outside the boundry or value = 1 (island) are not returned.
+	 * @param map      map to navigate
+	 * @param start    starting coord
 	 */
 	private static LinkedList<Coord> successorFunction(Map map, Coord start) {
 
@@ -282,6 +346,7 @@ public class A1main {
 
     // System.out.println("Searching coord: " + start);
 
+    // Find the direction of the current trianlge
 		boolean triangleFacingUp;
 		if((start.getR() % 2 == 0 && start.getC() % 2 == 0) || (start.getR() % 2 != 0 && start.getC() % 2 != 0)) {
 			triangleFacingUp = true;
@@ -327,6 +392,12 @@ public class A1main {
 
 	}
 
+  /**
+   * Is the given coord in the frontier.
+   * @param  coord                  given coord
+   * @param  frontier               frontier
+   * @return          [description]
+   */
   private static boolean inFrontier(Coord coord, LinkedList<Node> frontier) {
     for (Node node : frontier) {
       if (node.getState().equals(coord)) {
@@ -336,46 +407,44 @@ public class A1main {
     return false;
   }
 
+  /**
+   * Called when a solution has been found.
+   * @param tempNode      final node
+   * @param visitedNodes  number of visited nodes during search
+   */
   private static void finished(Node tempNode, int visitedNodes) {
 
-    double cost = tempNode.getPathCost();
+    double cost = tempNode.getPathCost(); // Final cost of route
 
     StringBuilder str = new StringBuilder();
 
+    // Find the taken route by iterating through the parent of tempNode and its
+    // parents until we get to the starting node (parentNode == null).
     while (tempNode.getParentNode() != null) {
       str.insert(0, tempNode.getState().toString());
-      // tempNode.printNode();
       Node temp = tempNode.getParentNode();
       tempNode = temp;
     }
-
     str.insert(0, tempNode.getState().toString());
 
+    // Print route, cost and number of visited nodes
     System.out.println(str);
     System.out.println(cost);
     System.out.println(visitedNodes);
 
+    // Exit
     System.exit(0);
 
   }
 
+  /**
+   * Called when no solution has been found.
+   * @param visitedNodes  Number of visited nodes
+   */
   private static void failure(int visitedNodes) {
     System.out.println("fail");
     System.out.println(visitedNodes);
   }
-
-
-	// /**
-	//  * Returns the cost for executing action in state.
-	//  * @param state1  [description]
-	//  * @param state2  [description]
-	//  */
-	// private static void cost(State state1,State state2) {
-  //
-	// }
-  //
-
-
 
 	private static void printMap(Map m, Coord init, Coord goal) {
 
