@@ -12,10 +12,14 @@
 
 import java.io.*;
 import java.util.*;
+import java.lang.Math;
 
 public class A1main {
 
   static final boolean DEBUG = true; // Change to true to read debug information
+
+  // manhattan distance works on a triangle grid insted of a square
+  static final boolean MAN_DIST_TRI = false;
 
 	/**
 	 * Main method for A1Main class.
@@ -53,9 +57,9 @@ public class A1main {
 			case "DFS": //run DFS
         runBasic(algo, map, start, goal);
 				break;
-			// case "BestF": //run BestF
-			// 	throw new java.lang.UnsupportedOperationException("Not supported yet.");
-			// 	break;
+			case "BestF": //run BestF
+				runBasic(algo, map, start, goal);
+        break;
 			// case "AStar": //run AStar
 			// 	throw new java.lang.UnsupportedOperationException("Not supported yet.");
 			// 	break;
@@ -69,14 +73,14 @@ public class A1main {
 
 		// Create frontier and add starting node
 		LinkedList<Node> frontier = new LinkedList<Node>();
-		frontier.add(new Node(start, null));
+    insert(start, null, algo, frontier, goal);
 
 		// Create explored set for visited coords
 		Set<String> explored = new HashSet<String> ();
 
 		while (frontier.size() != 0) { // While frontier not empty
 
-			printFrontier(frontier); // Print frontier
+			printFrontier(frontier, algo); // Print frontier
 
 			Node tempNode = remove(algo, frontier); // Remove next node from frontier
       visitedNodes++;
@@ -97,7 +101,7 @@ public class A1main {
 
           // If not already explored and not in frontier...
 					if (!explored.contains(coord.toString()) && !inFrontier(coord, frontier)) {
-						frontier.add(new Node(coord, tempNode)); // Add to frontier.
+						insert(coord, tempNode, algo, frontier, goal);
 					}
         }
 			}
@@ -107,45 +111,6 @@ public class A1main {
 		failure(visitedNodes);
 
 	}
-
-  private static boolean inFrontier(Coord coord, LinkedList<Node> frontier) {
-    for (Node node : frontier) {
-      if (node.getState().equals(coord)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static void finished(Node tempNode, int visitedNodes) {
-
-    double cost = tempNode.getPathCost();
-
-    StringBuilder str = new StringBuilder();
-
-    while (tempNode.getParentNode() != null) {
-      str.insert(0, tempNode.getState().toString());
-      // tempNode.printNode();
-      Node temp = tempNode.getParentNode();
-      tempNode = temp;
-    }
-
-    str.insert(0, tempNode.getState().toString());
-
-    System.out.println(str);
-    System.out.println(cost);
-    System.out.println(visitedNodes);
-
-    System.exit(0);
-
-  }
-
-  private static void failure(int visitedNodes) {
-    System.out.println("fail");
-    System.out.println(visitedNodes);
-  }
-
-
 
 	/**
 	 * Returns the first node from the frontier.
@@ -169,18 +134,126 @@ public class A1main {
 				temp = frontier.get(frontier.size()-1);
 				frontier.remove(frontier.size()-1);
 				break;
+      case "BestF":
+
+        int indexOfSmallestPath = 0;
+        for (Node node : frontier) {
+
+          // System.out.println("\tis " + frontier.get(indexOfSmallestPath).getPriority() + "<" + node.getPriority());
+          if (frontier.get(indexOfSmallestPath).getPriority() >= node.getPriority()) {
+            indexOfSmallestPath = frontier.indexOf(node);
+          }
+        }
+        temp = frontier.get(indexOfSmallestPath);
+        // System.out.println("chosen " + temp.getState().toString() + ":" + temp.getPriority());
+				frontier.remove(indexOfSmallestPath);
+
+        break;
+
+      case "AStar":
+        break;
 		}
 		return temp;
 
 	}
 
-	private static void printFrontier(LinkedList<Node> frontier) {
+  /**
+	 * Inserts a new node into the frontier.
+	 * @param node      [description]
+	 * @param frontier  [description]
+	 */
+	private static void insert(Coord coord, Node parentNode, String algo, LinkedList<Node> frontier, Coord goal) {
+
+    switch(algo) {
+			case "BFS":
+				frontier.add(new Node(coord, parentNode)); // Add to frontier.
+        break;
+			case "DFS":
+				frontier.add(new Node(coord, parentNode)); // Add to frontier.
+				break;
+      case "BestF":
+        frontier.add(new Node(coord, parentNode, calculateManhattanDist(coord, goal)));
+        break;
+      case "AStar":
+        break;
+		}
+
+	}
+
+  private static int calculateManhattanDist(Coord start, Coord goal) {
+
+    if (MAN_DIST_TRI == true) {
+      int startCoords[] = squareToTriangleCoords(start);
+      int goalCoords[] = squareToTriangleCoords(goal);
+
+      int changeInA = Math.abs(startCoords[0] + goalCoords[0]);
+      int changeInB = Math.abs(startCoords[1] + goalCoords[1]);
+      int changeInC = Math.abs(startCoords[2] + goalCoords[2]);
+
+      return changeInA + changeInB + changeInC;
+
+    } else {
+
+      return Math.abs(start.getR() - goal.getR()) + Math.abs(start.getC() - goal.getC());
+
+    }
+
+  }
+
+  private static int[] squareToTriangleCoords(Coord start) {
+
+    int dir;
+		if((start.getR() % 2 == 0 && start.getC() % 2 == 0) || (start.getR() % 2 != 0 && start.getC() % 2 != 0)) {
+			dir = 0;
+		} else {
+			dir = 1;
+		}
+
+    int coords[] = new int[3];
+    coords[0] = -start.getR();
+    coords[1] = (start.getR() + start.getC() - dir) / 2;
+    coords[2] = (start.getR() + start.getC() - dir) / 2 - start.getR() + dir;
+
+    return coords;
+
+  }
+
+	private static void printFrontier(LinkedList<Node> frontier, String algo) {
 
 		System.out.print("[");
 		for (int i = 0; i < frontier.size() - 1; i++) {
-    	System.out.print(frontier.get(i).getState().toString() + ",");
+
+      switch(algo) {
+  			case "BFS": //run BFS
+  				System.out.print(frontier.get(i).getState().toString() + ",");
+  				break;
+  			case "DFS": //run DFS
+          System.out.print(frontier.get(i).getState().toString() + ",");
+  				break;
+			case "BestF": //run BestF
+  				System.out.print(frontier.get(i).getState().toString() + ":" + frontier.get(i).getPriority() + ",");
+				break;
+			// case "AStar": //run AStar
+			// 	throw new java.lang.UnsupportedOperationException("Not done print yet.");
+			// 	break;
+  		}
+
 		}
-    System.out.print(frontier.get(frontier.size() - 1).getState().toString() + "]\n");
+
+    switch(algo) {
+      case "BFS": //run BFS
+        System.out.print(frontier.get(frontier.size() - 1).getState().toString() + "]\n");
+        break;
+      case "DFS": //run DFS
+        System.out.print(frontier.get(frontier.size() - 1).getState().toString() + "]\n");
+        break;
+    case "BestF": //run BestF
+        System.out.print(frontier.get(frontier.size() - 1).getState().toString() + ":" + frontier.get(frontier.size() - 1).getPriority() + "]\n");
+      break;
+    // case "AStar": //run AStar
+    // 	throw new java.lang.UnsupportedOperationException("Not done print yet.");
+    // 	break;
+    }
 
 	}
 
@@ -254,6 +327,44 @@ public class A1main {
 
 	}
 
+  private static boolean inFrontier(Coord coord, LinkedList<Node> frontier) {
+    for (Node node : frontier) {
+      if (node.getState().equals(coord)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static void finished(Node tempNode, int visitedNodes) {
+
+    double cost = tempNode.getPathCost();
+
+    StringBuilder str = new StringBuilder();
+
+    while (tempNode.getParentNode() != null) {
+      str.insert(0, tempNode.getState().toString());
+      // tempNode.printNode();
+      Node temp = tempNode.getParentNode();
+      tempNode = temp;
+    }
+
+    str.insert(0, tempNode.getState().toString());
+
+    System.out.println(str);
+    System.out.println(cost);
+    System.out.println(visitedNodes);
+
+    System.exit(0);
+
+  }
+
+  private static void failure(int visitedNodes) {
+    System.out.println("fail");
+    System.out.println(visitedNodes);
+  }
+
+
 	// /**
 	//  * Returns the cost for executing action in state.
 	//  * @param state1  [description]
@@ -263,15 +374,6 @@ public class A1main {
   //
 	// }
   //
-	// /**
-	//  * Inserts a new node into the frontier.
-	//  * @param node      [description]
-	//  * @param frontier  [description]
-	//  */
-	// private static void insert(Node node, Frontier frontier) {
-  //
-	// }
-
 
 
 

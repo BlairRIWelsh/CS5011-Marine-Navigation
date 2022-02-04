@@ -7,10 +7,25 @@ public class Node {
   //private String action;
   private double pathCost;
   private int depth;
+  private double priority;
 
   public Node(Coord state, Node parentNode) {
     this.state = state;
     this.parentNode = parentNode;
+
+    if (parentNode == null) {
+      pathCost = 0;
+      depth = 0;
+    } else {
+      pathCost = parentNode.getPathCost() + 1;
+      depth = parentNode.getDepth() + 1;
+    }
+  }
+
+  public Node(Coord state, Node parentNode, double priority) {
+    this.state = state;
+    this.parentNode = parentNode;
+    this.priority = priority;
 
     if (parentNode == null) {
       pathCost = 0;
@@ -32,6 +47,9 @@ public class Node {
 	}
 	public int getDepth() {
 		return depth;
+	}
+  public double getPriority() {
+		return priority;
 	}
 
   public void printNode() {
