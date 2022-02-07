@@ -61,7 +61,7 @@ public class A1main {
 
 	}
 
-  /** REGULAR SEARCH FUNCTIONS **//
+  /** REGULAR SEARCH FUNCTIONS **/
 
   /**
    * Main search tree algorithim. Changes for different algorthims happen during
