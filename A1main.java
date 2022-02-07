@@ -15,10 +15,12 @@ import java.lang.Math;
 
 public class A1main {
 
-  static final boolean DEBUG = true; // Change to true to read debug information
+  static final boolean DEBUG = false; // Change to true to read debug information
 
   // set manhattan distance to work on a triangle grid insted of a square
   static final boolean MAN_DIST_TRI = false;
+
+  // number of visited nodes for bidirectional search
   private static int biVistedNodes = 0;
 
 	/**
