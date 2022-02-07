@@ -19,6 +19,7 @@ public class A1main {
 
   // set manhattan distance to work on a triangle grid insted of a square
   static final boolean MAN_DIST_TRI = false;
+  private static int biVistedNodes = 0;
 
 	/**
 	 * Main method for A1Main class.
@@ -42,10 +43,142 @@ public class A1main {
 			System.out.println();
 		}
 
-		// Run algorithim
-		runSearch(args[0],conf.getMap(),conf.getS(),conf.getG());
+    switch (args[0]) {
+      case "BFS":
+			case "DFS":
+      case "BestF":
+      case "AStar":
+        runSearch(args[0],conf.getMap(),conf.getS(),conf.getG());
+        break;
+      case "BiS":
+        biDirectionalSearch(conf.getMap(),conf.getS(),conf.getG());
+        break;
+      default:
+        throw new java.lang.UnsupportedOperationException("Algorithim '" + args[0] + "' not supported.");
+    }
 
 	}
+
+  public static void biDirectionalSearch(Map map, Coord start, Coord goal) {
+
+		// Create frontiers
+		LinkedList<Node> queueA = new LinkedList<Node>();
+    LinkedList<Node> queueB = new LinkedList<Node>();
+
+    // Add starting nodes to frontiers
+    insert(start, null, "BFS", queueA, goal);
+    insert(goal, null, "BFS", queueB, start);
+
+    // Create explored sets for visited coords
+		Set<Node> exploredA = new HashSet<Node> ();
+		Set<Node> exploredB = new HashSet<Node> ();
+
+    while (!queueA.isEmpty() || !queueB.isEmpty()) {
+
+        printFrontiers(queueA, queueB);
+        // printExploreds(exploredA, exploredB);
+        // System.out.println("Ae: " + exploredA);
+        // System.out.println("Be: " + exploredB);
+
+        pathExistsHelper(map, queueA, exploredA, exploredB, start);
+        pathExistsHelper(map, queueB, exploredB, exploredA, start);
+
+    }
+
+    failure(biVistedNodes);
+
+  }
+
+  private static void pathExistsHelper(Map map, LinkedList<Node> queue, Set<Node> visitedFromThisSide, Set<Node> visitedFromThatSide, Coord start) {
+
+        if (!queue.isEmpty()) {
+
+          Node tempNode = remove("BFS", queue); // Remove next node from frontier
+          biVistedNodes++;
+
+          // System.out.println("Now on coord: " + tempNode.getState().toString());
+
+          visitedFromThisSide.add(tempNode);
+
+          for (Coord coord : successorFunction(map, tempNode.getState())) {
+
+              // If the visited nodes, starting from the other direction,
+              // contain the "adjacent" node of "next", then we can terminate the search
+              if (coordInExplored(coord, visitedFromThatSide)) {
+                  finishedBi(new Node(coord, tempNode), visitedFromThatSide, start);
+              } else if (!coordInExplored(coord, visitedFromThisSide) && !inFrontier(coord, queue)) {
+                  insert(coord, tempNode, "BFS", queue, null);
+              }
+          }
+        }
+    }
+
+  private static boolean coordInExplored(Coord coord, Set<Node> explored) {
+    for (Node node : explored) {
+      if (coord.toString().equals(node.getState().toString())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static void finishedBi(Node middleNode, Set<Node> otherExplored, Coord start) {
+
+    String middleNodeCoords = middleNode.getState().toString();
+
+    // System.out.println("done Bi on " + middleNode.getState().toString());
+
+    double firstHalfCost = middleNode.getPathCost(); // Final cost of route
+    double secondHalfCost = 0;
+
+    // StringBuilder str = new StringBuilder();
+    LinkedList<String> route = new LinkedList<String>();
+
+    while (middleNode.getParentNode() != null) {
+      // str.insert(0, middleNode.getState().toString());
+      route.addFirst(middleNode.getState().toString());
+      Node temp = middleNode.getParentNode();
+      middleNode = temp;
+    }
+    // str.insert(0, middleNode.getState().toString());
+    route.addFirst(middleNode.getState().toString());
+
+    if (firstHalfCost > 2) {
+      Node nodeFromOtherSide = null;
+      for (Node node : otherExplored) {
+        // System.out.println("Is " + node.getState().toString() + " = " + middleNodeCoords);
+        if (node.getState().toString().equals(middleNodeCoords)){
+          nodeFromOtherSide = node.getParentNode();
+          break;
+        }
+      }
+      secondHalfCost = nodeFromOtherSide.getPathCost(); // Final cost of route
+      while (nodeFromOtherSide.getParentNode() != null) {
+        // str.insert(str.length(), nodeFromOtherSide.getState().toString());
+        route.addLast(nodeFromOtherSide.getState().toString());
+        Node temp = nodeFromOtherSide.getParentNode();
+        nodeFromOtherSide = temp;
+      }
+      // str.insert(str.length(), nodeFromOtherSide.getState().toString());
+      route.addLast(nodeFromOtherSide.getState().toString());
+    }
+
+    // System.out.println("Is " + route.get(0) + " = " + start.toString());
+
+    // System.out.println(str);
+    if (route.get(0).equals(start.toString())) {
+      for(int i = 0; i <= route.size()-1; i++)
+            System.out.print( route.get(i) );
+    } else {
+      for(int i = route.size()-1; i >= 0 ; i--)
+            System.out.print( route.get(i) );
+    }
+    System.out.println();
+    System.out.println(firstHalfCost + secondHalfCost + 1);
+    System.out.println(biVistedNodes-1);
+
+    System.exit(0);
+  }
 
   /**
    * Main search tree algorithim. Changes for different algorthims happen during
@@ -318,6 +451,61 @@ public class A1main {
         System.out.print(frontier.get(frontier.size() - 1).getState().toString() + ":" + frontier.get(frontier.size() - 1).getPriority() + "]\n");
       break;
     }
+
+	}
+
+  /**
+   * Print the frontier.
+   * @param frontier  Frontier
+   * @param algo      Algorithm in use
+   */
+	private static void printFrontiers(LinkedList<Node> frontierA, LinkedList<Node> frontierB) {
+
+		System.out.print("A: [");
+
+    for (int i = 0; i < frontierA.size() - 1; i++) {
+      System.out.print(frontierA.get(i).getState().toString() + ",");
+		}
+    if (frontierA.size() != 0) {
+      System.out.print(frontierA.get(frontierA.size() - 1).getState().toString() + "]\n");
+
+    } else {
+      System.out.print("]\n");
+    }
+
+    System.out.print("B: [");
+
+    for (int i = 0; i < frontierB.size() - 1; i++) {
+      System.out.print(frontierB.get(i).getState().toString() + ",");
+		}
+    if (frontierB.size() != 0) {
+      System.out.print(frontierB.get(frontierB.size() - 1).getState().toString() + "]\n");
+    } else {
+      System.out.print("]\n");
+    }
+
+	}
+
+  private static void printExploreds(Set<Node>frontierA, Set<Node> frontierB) {
+
+		System.out.print("Ae: [");
+    Iterator itr = frontierA.iterator();
+    while (itr.hasNext()) {
+      Node temp = (Node) itr.next();
+      System.out.print(temp.getState().toString() + ", ");
+          // System.out.print(itr.next().getState().toString() + ", ");
+          // System.out.print(itr.next());
+    }
+    System.out.print("]\n");
+
+    System.out.print("Be: [");
+    itr = frontierB.iterator();
+    while (itr.hasNext()) {
+          Node temp = (Node) itr.next();
+          System.out.print(temp.getState().toString() + ", ");
+          // System.out.print(itr.next());
+    }
+    System.out.print("]\n\n");
 
 	}
 
